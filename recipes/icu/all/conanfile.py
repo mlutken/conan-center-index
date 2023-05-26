@@ -2,6 +2,7 @@ import glob
 import hashlib
 import os
 import shutil
+from pathlib import Path
 
 from conan import ConanFile
 from conan.errors import ConanInvalidConfiguration
@@ -191,6 +192,30 @@ class ICUConan(ConanFile):
 
         # workaround for "No rule to make target 'out/tmp/dirs.timestamp'"
         save(self, os.path.join(self.build_folder, "data", "out", "tmp", "dirs.timestamp"), "")
+
+        if self.settings.os in ["Emscripten"]:
+            mh_emscripten_path = os.path.join(self.source_folder, "source", "config", "mh-emscripten")
+            acinclude_m4_script_path = os.path.join(self.source_folder, "source", "acinclude.m4")
+            configure_script_path = os.path.join(self.source_folder, "source", "configure")
+			# Remove any -m64 flags, which are set and that emscripten does not support
+			# TODO: I have not been able to figure out where these '-m64' flags are set, so there is 
+			# likely a better way to fix this
+            replace_in_file(self, configure_script_path, ': ${CFLAGS=""}', 'CFLAGS="-O3"')
+            replace_in_file(self, configure_script_path, ': ${CXXFLAGS=""}', 'CXXFLAGS="-O3"\nLDFLAGS="-O3"')
+			
+			# Add mh-emscripten file if not present in ICU sources.
+            if not Path(mh_emscripten_path).is_file():
+                mh_emscripten_src_path = os.path.join(self.recipe_folder, "data", "mh-emscripten")
+                print(f"FIXMENM Create needed 'source/config/mh-emscripten' file!, mh_emscripten_src_path: '{mh_emscripten_src_path}'")
+                shutil.copy(mh_emscripten_src_path, mh_emscripten_path)
+
+                replace_in_file(self, configure_script_path,
+                                '*-ncr-*)	icu_cv_host_frag=mh-mpras ;;',
+                                '*-ncr-*)	icu_cv_host_frag=mh-mpras ;;\nwasm*-*-emscripten*)	icu_cv_host_frag=mh-emscripten ;;')
+                replace_in_file(self, acinclude_m4_script_path,
+                                '*-ncr-*)	icu_cv_host_frag=mh-mpras ;;',
+                                '*-ncr-*)	icu_cv_host_frag=mh-mpras ;;\nwasm*-*-emscripten*)	icu_cv_host_frag=mh-emscripten ;;')
+
 
     def build(self):
         self._patch_sources()
