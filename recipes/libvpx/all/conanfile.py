@@ -119,7 +119,8 @@ class LibVPXConan(ConanFile):
                 'armv8': 'arm64',
                 'mips': 'mips32',
                 'mips64': 'mips64',
-                'sparc': 'sparc'}.get(str(self.settings.arch))
+                'sparc': 'sparc',
+                'wasm': 'wasm'}.get(str(self.settings.arch))
         if str(self.settings.compiler) == "Visual Studio":
             vc_version = self.settings.compiler.version
             compiler = f"vs{vc_version}"
@@ -147,6 +148,9 @@ class LibVPXConan(ConanFile):
             os_name = 'solaris'
         elif host_os == 'Android':
             os_name = 'android'
+        elif host_os == 'Emscripten':
+            os_name = 'emscripten'
+
         target = f"{arch}-{os_name}-{compiler}"
         tc.configure_args.append(f"--target={target}")
         if str(self.settings.arch) in ["x86", "x86_64"]:
@@ -193,6 +197,8 @@ class LibVPXConan(ConanFile):
             else:
                 self.output.info("Enabling LTO")
 
+        self._patch_for_emscripten()
+
         # The compile script wants to use CC for some of the platforms (Linux, etc),
         # but incorrectly assumes gcc is the compiler for those platforms.
         # This can fail some of the configure tests, and -lpthread isn't added to the link command.
@@ -208,6 +214,13 @@ class LibVPXConan(ConanFile):
   fi
 """
             )
+
+    def _patch_for_emscripten(self):
+        configure_file_path = os.path.join(self.source_folder, "configure")
+        replace_in_file(self,configure_file_path,
+                        'all_platforms="${all_platforms} x86-android-gcc"',
+                        'all_platforms="${all_platforms} wasm-emscripten-gcc"\nall_platforms="${all_platforms} x86-android-gcc"'
+                        )
 
     def build(self):
         self._patch_sources()
