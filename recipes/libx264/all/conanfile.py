@@ -6,6 +6,7 @@ from conan.tools.files import copy, rename, get, rmdir
 from conan.tools.gnu import Autotools, AutotoolsToolchain
 from conan.tools.layout import basic_layout
 from conan.tools.microsoft import check_min_vs, is_msvc, unix_path
+from conan.tools.files import replace_in_file
 import os
 
 required_conan_version = ">=1.57.0"
@@ -64,8 +65,25 @@ class LibX264Conan(ConanFile):
             if not self.conf.get("tools.microsoft.bash:path", check_type=str):
                 self.tool_requires("msys2/cci.latest")
 
+    def _patch_sources(self):
+        self._patch_for_emscripten()
+
+    def _patch_for_emscripten(self):
+        configure_file_path = os.path.join(self.source_folder, "configure")
+        replace_in_file(self,configure_file_path,
+                        'case $host_os in',
+"""case $host_os in
+    emscripten*)
+        SYS="EMSCRIPTEN"
+        define HAVE_MALLOC_H
+        libm="-lm"
+        ;;
+"""
+                        )
+
     def source(self):
         get(self, **self.conan_data["sources"][self.version], strip_root=True)
+        self._patch_sources()
 
     def generate(self):
         env = VirtualBuildEnv(self)
