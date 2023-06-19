@@ -51,6 +51,8 @@ class Libx265Conan(ConanFile):
         # Indeed, apple-clang is not able to understand some asm instructions of libx265
         if self.settings.compiler == "apple-clang" and "arm" in self.settings.arch:
             self.options.assembly = False
+        if self.settings.os == "Emscripten":
+            self.options.assembly = False
 
     def configure(self):
         if self.options.shared:
