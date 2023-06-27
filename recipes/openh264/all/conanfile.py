@@ -83,6 +83,17 @@ class OpenH264Conan(ConanFile):
                             "APP_PLATFORM := android-12",
                             f"APP_PLATFORM := {self._android_target}")
 
+        if self.settings.os == "Emscripten":
+            self._patch_for_emscripten()
+
+
+    def _patch_for_emscripten(self):
+        wels_decoder_thread_file_path = os.path.join(self.source_folder, "codec/decoder/core/src/wels_decoder_thread.cpp")
+        WelsThreadLib_file_path = os.path.join(self.source_folder, "codec/common/src/WelsThreadLib.cpp")
+        replace_in_file(self, wels_decoder_thread_file_path, '#include <sys/sysctl.h>', '', strict=False  )
+        replace_in_file(self, WelsThreadLib_file_path, '#include <sys/sysctl.h>', '', strict=False  )
+
+
     @property
     def _library_filename(self):
         prefix = "" if (is_msvc(self) or self._is_clang_cl) else "lib"
@@ -114,11 +125,14 @@ class OpenH264Conan(ConanFile):
 
     @property
     def _make_args(self):
-        prefix = unix_path(self, os.path.abspath(self.package_folder))
         args = [
-            f"ARCH={self._make_arch}",
-            f"PREFIX={prefix}"
+            f"ARCH={self._make_arch}"
         ]
+
+        if self.package_folder != None:
+            prefix = unix_path(self, os.path.abspath(self.package_folder))
+            args.append(f"PREFIX={prefix}")
+
 
         if is_msvc(self) or self._is_clang_cl:
             args.append("OS=msvc")
@@ -166,6 +180,9 @@ class OpenH264Conan(ConanFile):
             autotools.make(target=self._library_filename)
 
     def package(self):
+        Makefile_path = os.path.join(self.source_folder, "Makefile")
+        replace_in_file(self, Makefile_path, 'PREFIX=/usr/local', f"PREFIX={self.package_folder}", strict=False )
+
         copy(self, pattern="LICENSE", dst=os.path.join(
             self.package_folder, "licenses"), src=self.source_folder)
         autotools = Autotools(self)
