@@ -106,7 +106,7 @@ class Libx265Conan(ConanFile):
         cmakelists = os.path.join(self.source_folder, "source", "CMakeLists.txt")
         replace_in_file(self, cmakelists,
                                 "if((WIN32 AND ENABLE_CLI) OR (WIN32 AND ENABLE_SHARED))",
-                                "if(FALSE)")
+                                "if(FALSE)", strict=False )
         if self.settings.os == "Android":
             replace_in_file(self, cmakelists, "list(APPEND PLATFORM_LIBS pthread)", "")
             replace_in_file(self, cmakelists, "list(APPEND PLATFORM_LIBS rt)", "")
