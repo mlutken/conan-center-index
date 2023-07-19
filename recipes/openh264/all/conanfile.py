@@ -152,6 +152,14 @@ class OpenH264Conan(ConanFile):
                     f"TARGET={self._android_target}",
                     "CCASFLAGS=$(CFLAGS) -fno-integrated-as",
                 ])
+            # Emscripten: https://stackoverflow.com/questions/58854858/undefined-symbol-stack-chk-guard-in-libopenh264-so-when-building-ffmpeg-wit
+            if self.settings.os == "Emscripten":
+                args.extend([
+                    "CXXFLAGS=-fno-stack-protector",
+                    "CFLAGS=-fno-stack-protector",
+                    "LDFLAGS=-fno-stack-protector",
+                ])
+
 
         return args
 
