@@ -69,6 +69,9 @@ class OpenjpegConan(ConanFile):
         tc.variables["BUILD_PKGCONFIG_FILES"] = False
         tc.variables["OPJ_DISABLE_TPSOT_FIX"] = False
         tc.variables["OPJ_USE_THREAD"] = True
+        if self.settings.os == "Emscripten":
+            tc.variables["EMSCRIPTEN"] = True
+
         tc.generate()
 
     def build(self):
