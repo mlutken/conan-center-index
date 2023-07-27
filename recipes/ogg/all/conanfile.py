@@ -1,6 +1,6 @@
 from conan import ConanFile
 from conan.tools.cmake import CMake, CMakeToolchain, cmake_layout
-from conan.tools.files import apply_conandata_patches, copy, export_conandata_patches, get, rmdir
+from conan.tools.files import apply_conandata_patches, copy, export_conandata_patches, get, rmdir, replace_in_file
 import os
 
 required_conan_version = ">=1.53.0"
@@ -44,6 +44,11 @@ class OggConan(ConanFile):
         get(self, **self.conan_data["sources"][self.version],
             destination=self.source_folder, strip_root=True)
 
+    def _patch_sources(self):
+        if self.settings.os == "Emscripten":
+            cmakelists_file_path = os.path.join(self.source_folder, "CMakeLists.txt")
+            replace_in_file(self, cmakelists_file_path, 'include(CheckSizes)', '#include(CheckSizes)', strict=False  )
+
     def generate(self):
         tc = CMakeToolchain(self)
         tc.variables["BUILD_TESTING"] = False
@@ -55,6 +60,7 @@ class OggConan(ConanFile):
 
     def build(self):
         apply_conandata_patches(self)
+        self._patch_sources()
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
