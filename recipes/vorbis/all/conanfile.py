@@ -1,6 +1,6 @@
 from conan import ConanFile
 from conan.tools.cmake import CMake, CMakeDeps, CMakeToolchain, cmake_layout
-from conan.tools.files import apply_conandata_patches, copy, get, rmdir
+from conan.tools.files import apply_conandata_patches, copy, get, rmdir, replace_in_file
 import os
 
 required_conan_version = ">=1.52.0"
@@ -54,6 +54,11 @@ class VorbisConan(ConanFile):
         get(self, **self.conan_data["sources"][self.version],
             destination=self.source_folder, strip_root=True)
 
+    def _patch_sources(self):
+        if self.settings.os == "Emscripten":
+            cmakelists_file_path = os.path.join(self.source_folder, "CMakeLists.txt")
+            replace_in_file(self, cmakelists_file_path, 'include(CheckSizes)', '#include(CheckSizes)', strict=False  )
+
     def generate(self):
         tc = CMakeToolchain(self)
         # Relocatable shared lib on Macos
@@ -66,9 +71,17 @@ class VorbisConan(ConanFile):
 
     def build(self):
         apply_conandata_patches(self)
+        self._patch_sources()
         cmake = CMake(self)
         cmake.configure()
         cmake.build()
+
+    def _patch_sources(self):
+        if self.settings.os == "Emscripten":
+            lib_cmakelists_file_path = os.path.join(self.source_folder, "lib/CMakeLists.txt")
+            replace_in_file(self, lib_cmakelists_file_path,
+                            'install(FILES ${VORBIS_PUBLIC_HEADERS} DESTINATION ${CMAKE_INSTALL_FULL_INCLUDEDIR}/vorbis)',
+                            'install(FILES ${VORBIS_PUBLIC_HEADERS} DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/vorbis)', strict=True  )
 
     def package(self):
         copy(self, "COPYING", src=self.source_folder, dst=os.path.join(self.package_folder, "licenses"))
